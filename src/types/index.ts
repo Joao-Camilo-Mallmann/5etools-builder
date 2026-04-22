@@ -4,7 +4,12 @@ export interface BuilderEntity {
   source: string;
 }
 
-export type BuilderRace = BuilderEntity;
+export interface BuilderRace extends BuilderEntity {
+  entriesSummary?: string;
+  sources?: string[];
+  raw?: Record<string, unknown>;
+  rawItems?: Record<string, unknown>[];
+}
 export type BuilderClass = BuilderEntity;
 export type BuilderBackground = BuilderEntity;
 export interface BuilderSpell extends BuilderEntity {
@@ -26,6 +31,7 @@ export interface BuilderSubrace extends BuilderEntity {
   entriesSummary?: string;
   raceName?: string;
   raceSource?: string;
+  raw?: Record<string, unknown>;
 }
 
 export interface BuilderSubclass extends BuilderEntity {

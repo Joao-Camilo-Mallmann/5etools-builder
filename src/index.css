@@ -1,189 +1,131 @@
-@import url("https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Manrope:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Scala+Sans+Offc+W01+Bold&display=swap");
 
+/* ── 5etools design system (night-mode aligned) ─────────────── */
 :root {
-  --bg: #0e0f13;
-  --bg-subtle: #14151b;
-  --surface: rgba(255, 255, 255, 0.04);
-  --surface-raised: rgba(255, 255, 255, 0.07);
-  --surface-glass: rgba(255, 255, 255, 0.05);
-  --surface-hover: rgba(255, 255, 255, 0.09);
-  --surface-active: rgba(212, 175, 55, 0.08);
+  /* Core — mirrors ve-night-mode */
+  --bg:             #222;
+  --bg-raised:      #2a2a2a;
+  --bg-card:        #2e2e2e;
+  --bg-card-hover:  #383838;
+  --bg-input:       #222;
 
-  --text: #e8e4de;
-  --text-secondary: #9e978d;
-  --text-muted: #6b655c;
-  --text-heading: #f5f0e8;
+  --text:           #bbb;
+  --text-secondary: #999;
+  --text-muted:     #666;
+  --text-heading:   #ddd;
 
-  --accent: #d4af37;
-  --accent-glow: rgba(212, 175, 55, 0.25);
-  --accent-soft: rgba(212, 175, 55, 0.12);
-  --accent-ember: #c97b2a;
-  --accent-ember-glow: rgba(201, 123, 42, 0.2);
+  /* 5etools accent palette */
+  --blue:           #006bc4;   /* theme-color / primary action */
+  --blue-soft:      rgba(0, 107, 196, 0.15);
+  --blue-border:    rgba(0, 107, 196, 0.4);
+  --blue-hover:     #0079dc;
 
-  --success: #4a9e5c;
-  --success-soft: rgba(74, 158, 92, 0.12);
-  --success-border: rgba(74, 158, 92, 0.3);
+  --red-name:       #e07040;   /* ve-night-mode name color (warm adaptation of #822000) */
+  --red-soft:       rgba(224, 112, 64, 0.1);
 
-  --danger: #a84040;
-  --danger-soft: rgba(168, 64, 64, 0.12);
+  --amber:          #e69a28;   /* --rgb-border--statblock */
+  --amber-soft:     rgba(230, 154, 40, 0.1);
+  --amber-border:   rgba(230, 154, 40, 0.35);
 
-  --line: rgba(255, 255, 255, 0.08);
-  --line-strong: rgba(255, 255, 255, 0.14);
+  --green:          #5a9e6f;
+  --green-soft:     rgba(90, 158, 111, 0.12);
+  --green-border:   rgba(90, 158, 111, 0.35);
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
+  --danger:         #c0392b;
+  --danger-soft:    rgba(192, 57, 43, 0.1);
+
+  /* Borders — mirrors #555 from night-mode */
+  --line:           rgba(85, 85, 85, 0.5);
+  --line-strong:    #555;
+
+  /* Geometry */
+  --radius-sm:  4px;
+  --radius-md:  6px;
+  --radius-lg:  10px;
+  --radius-xl:  14px;
   --radius-pill: 999px;
 
-  --font-heading: "Libre Baskerville", Georgia, serif;
-  --font-body: "Manrope", "Segoe UI", sans-serif;
+  /* Typography — 5etools uses system stack */
+  --font-heading: "Scala Sans Offc W01 Bold", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-body:    "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono:    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  --shadow-glow: 0 0 30px -8px rgba(212, 175, 55, 0.15);
-  --shadow-card: 0 8px 32px -12px rgba(0, 0, 0, 0.5);
-  --shadow-elevated: 0 16px 48px -16px rgba(0, 0, 0, 0.6);
+  /* Shadows */
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.35);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg:  0 6px 20px rgba(0,0,0,0.56);   /* matches ve-night-mode modal */
 
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-smooth: 400ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-fast:   150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-smooth: 350ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-* {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#root {
-  min-height: 100dvh;
-}
+* { box-sizing: border-box; }
+html, body, #root { min-height: 100dvh; }
 
 body {
   margin: 0;
   font-family: var(--font-body);
-  font-size: 0.935rem;
+  font-size: 14px;   /* 5etools base */
   line-height: 1.5;
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse 80% 50% at 20% 0%, rgba(212, 175, 55, 0.06), transparent),
-    radial-gradient(ellipse 60% 40% at 80% 10%, rgba(201, 123, 42, 0.05), transparent),
-    radial-gradient(ellipse 50% 80% at 50% 100%, rgba(14, 15, 19, 0.95), transparent);
-  z-index: 0;
-}
-
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
-  background-size: 40px 40px;
-  opacity: 0.6;
-  z-index: 0;
 }
 
 #root {
-  padding: clamp(0.8rem, 2vw, 1.6rem);
+  padding: clamp(0.5rem, 1.5vw, 1.2rem);
   position: relative;
-  z-index: 1;
 }
 
 h1, h2, h3, h4 {
   font-family: var(--font-heading);
   color: var(--text-heading);
-  margin: 0;
+  margin: 0; font-weight: 700;
 }
 
-p {
-  margin: 0;
-}
+p { margin: 0; }
+label { font-size: 0.9rem; }
 
-label {
-  font-size: 0.92rem;
-}
+input, select, textarea, button { font: inherit; }
 
-input,
-select,
-textarea,
-button {
-  font: inherit;
-}
-
-input,
-select,
-textarea {
+input, select, textarea {
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
-  padding: 0.58rem 0.72rem;
-  background: var(--surface);
+  padding: 4px 8px;
+  background: var(--bg-input);
   color: var(--text);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-input:focus,
-select:focus,
-textarea:focus {
+input:focus, select:focus, textarea:focus {
   outline: none;
-  border-color: rgba(212, 175, 55, 0.4);
-  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.08);
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px var(--blue-soft);
 }
 
 textarea {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  line-height: 1.32;
+  font-family: var(--font-mono);
+  line-height: 1.35;
 }
 
-::selection {
-  background: rgba(212, 175, 55, 0.25);
-  color: var(--text-heading);
-}
+::selection { background: rgba(0,107,196,0.3); color: #fff; }
 
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.18);
-}
+/* Scrollbar — thin, 5etools style */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #777; }
 
 @keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
-@keyframes slideInRight {
-  from { opacity: 0; transform: translateX(16px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 12px -4px rgba(212, 175, 55, 0.2); }
-  50%      { box-shadow: 0 0 20px -4px rgba(212, 175, 55, 0.35); }
-}
-
-@keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(0,107,196,0.2); }
+  50%      { box-shadow: 0 0 0 4px rgba(0,107,196,0.35); }
 }

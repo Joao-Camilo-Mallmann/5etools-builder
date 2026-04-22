@@ -13,20 +13,55 @@ import { SelectionsSidebar } from "./components/SelectionsSidebar";
 import { SpellPicker } from "./components/SpellPicker";
 import { StepWizard, type WizardStep } from "./components/StepWizard";
 import { SubclassPicker } from "./components/SubclassPicker";
-import { SubracePicker } from "./components/SubracePicker";
 import type {
-  BuilderBackground,
-  BuilderClass,
-  BuilderRace,
-  BuilderSpell,
-  BuilderSubclass,
-  BuilderSubrace,
+    BuilderBackground,
+    BuilderClass,
+    BuilderRace,
+    BuilderSpell,
+    BuilderSubclass,
+    BuilderSubrace,
 } from "./types";
 import type { UpstreamSubclass } from "./types/classes";
-import type { UpstreamSubrace } from "./types/races";
+import type { UpstreamRace, UpstreamSubrace } from "./types/races";
 
 function makeId(name: string, source: string): string {
   return `${name}|${source}`.toLowerCase();
+}
+
+function getEntryText(entry: unknown): string | null {
+  if (typeof entry === "string") return entry.trim() || null;
+  if (typeof entry !== "object" || entry === null) return null;
+
+  const record = entry as {
+    entries?: unknown;
+    entry?: unknown;
+    name?: unknown;
+  };
+  if (typeof record.entry === "string" && record.entry.trim()) {
+    return record.entry.trim();
+  }
+
+  if (Array.isArray(record.entries)) {
+    for (const child of record.entries) {
+      const found = getEntryText(child);
+      if (found) return found;
+    }
+  }
+
+  if (typeof record.name === "string" && record.name.trim()) {
+    return record.name.trim();
+  }
+
+  return null;
+}
+
+function getEntriesSummary(entries: unknown): string | undefined {
+  if (!Array.isArray(entries)) return undefined;
+  for (const entry of entries) {
+    const text = getEntryText(entry);
+    if (text) return text;
+  }
+  return undefined;
 }
 
 function toEntity(value: unknown, fallbackName: string): BuilderRace {
@@ -45,6 +80,71 @@ function toEntity(value: unknown, fallbackName: string): BuilderRace {
     name,
     source,
   };
+}
+
+function toBuilderRace(value: unknown): BuilderRace {
+  const record = typeof value === "object" && value !== null ? value : {};
+  const raw = record as UpstreamRace;
+
+  const name = typeof raw.name === "string" ? raw.name : "Unknown Race";
+  const source = typeof raw.source === "string" ? raw.source : "unknown";
+
+  return {
+    id: makeId(name, source),
+    name,
+    source,
+    sources: [source],
+    entriesSummary: getEntriesSummary(raw.entries),
+    raw: record as Record<string, unknown>,
+    rawItems: [record as Record<string, unknown>],
+  };
+}
+
+function mergeRacesByName(raceItems: BuilderRace[]): BuilderRace[] {
+  const grouped = new Map<string, BuilderRace>();
+
+  for (const race of raceItems) {
+    const key = race.name.trim().toLowerCase();
+    const existing = grouped.get(key);
+
+    if (!existing) {
+      grouped.set(key, {
+        ...race,
+        id: key,
+        sources: race.sources?.length ? race.sources : [race.source],
+        rawItems: race.rawItems?.length
+          ? race.rawItems
+          : race.raw
+            ? [race.raw]
+            : [],
+      });
+      continue;
+    }
+
+    const mergedSources = new Set<string>([
+      ...(existing.sources?.length ? existing.sources : [existing.source]),
+      ...(race.sources?.length ? race.sources : [race.source]),
+    ]);
+
+    existing.sources = [...mergedSources];
+    existing.source = existing.sources.join(", ");
+
+    if (!existing.entriesSummary && race.entriesSummary) {
+      existing.entriesSummary = race.entriesSummary;
+    }
+
+    const incomingRawItems = race.rawItems?.length
+      ? race.rawItems
+      : race.raw
+        ? [race.raw]
+        : [];
+
+    if (incomingRawItems.length) {
+      existing.rawItems = [...(existing.rawItems ?? []), ...incomingRawItems];
+    }
+  }
+
+  return [...grouped.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function toBuilderSubclass(value: unknown): BuilderSubclass | null {
@@ -88,6 +188,8 @@ function toBuilderSubrace(value: unknown): BuilderSubrace | null {
     source: raw.source,
     raceName: typeof raw.raceName === "string" ? raw.raceName : undefined,
     raceSource: typeof raw.raceSource === "string" ? raw.raceSource : undefined,
+    entriesSummary: getEntriesSummary(raw.entries),
+    raw: record as Record<string, unknown>,
   };
 }
 
@@ -208,7 +310,7 @@ function App() {
               .background as unknown[])
           : [];
 
-        setRaces(raceValues.map((v) => toEntity(v, "Unknown Race")));
+        setRaces(mergeRacesByName(raceValues.map((v) => toBuilderRace(v))));
         setSubraces(
           subraceValues
             .map((v) => toBuilderSubrace(v))
@@ -271,11 +373,18 @@ function App() {
 
   const filteredSubraces = useMemo(() => {
     if (!selectedRace) return [];
-    return subraces.filter(
-      (sr) =>
-        sr.raceName === selectedRace.name &&
-        sr.raceSource === selectedRace.source,
+
+    const allowedSources = new Set(
+      selectedRace.sources?.length
+        ? selectedRace.sources
+        : [selectedRace.source],
     );
+
+    return subraces.filter((sr) => {
+      if (sr.raceName !== selectedRace.name) return false;
+      if (!sr.raceSource) return true;
+      return allowedSources.has(sr.raceSource);
+    });
   }, [selectedRace, subraces]);
 
   const filteredSubclasses = useMemo(() => {
@@ -322,9 +431,9 @@ function App() {
 
   // ── Steps definition ──────────────────────────────────────
   // Step completion: require selection except for optional steps
-  const raceComplete = selectedRaceId !== null;
-  const subraceComplete =
-    filteredSubraces.length === 0 || selectedSubraceId !== null;
+  const ancestryComplete =
+    selectedRaceId !== null &&
+    (filteredSubraces.length === 0 || selectedSubraceId !== null);
   const classComplete = selectedClassId !== null;
   const subclassComplete =
     filteredSubclasses.length === 0 || selectedSubclassId !== null;
@@ -337,36 +446,24 @@ function App() {
       {
         id: 1,
         title: "Race",
-        isComplete: raceComplete,
+        isComplete: ancestryComplete,
         isLocked: false,
         content: (
           <RacePicker
             races={races}
             selectedRaceId={selectedRaceId}
+            subraces={filteredSubraces}
+            selectedSubraceId={selectedSubraceId}
             onSelect={handleRaceSelect}
+            onSelectSubrace={setSelectedSubraceId}
           />
         ),
       },
       {
         id: 2,
-        title: "Subrace",
-        isComplete: subraceComplete,
-        isLocked: !raceComplete,
-        content: (
-          <SubracePicker
-            subraces={filteredSubraces}
-            selectedSubraceId={selectedSubraceId}
-            hasSelectedRace={raceComplete}
-            raceName={selectedRace?.name ?? null}
-            onSelect={setSelectedSubraceId}
-          />
-        ),
-      },
-      {
-        id: 3,
         title: "Class",
         isComplete: classComplete,
-        isLocked: !raceComplete || !subraceComplete,
+        isLocked: !ancestryComplete,
         content: (
           <ClassPicker
             classes={classes}
@@ -376,7 +473,7 @@ function App() {
         ),
       },
       {
-        id: 4,
+        id: 3,
         title: "Subclass",
         isComplete: subclassComplete,
         isLocked: !classComplete,
@@ -391,7 +488,7 @@ function App() {
         ),
       },
       {
-        id: 5,
+        id: 4,
         title: "Background",
         isComplete: backgroundComplete,
         isLocked: !classComplete || !subclassComplete,
@@ -404,7 +501,7 @@ function App() {
         ),
       },
       {
-        id: 6,
+        id: 5,
         title: "Spells",
         isComplete: spellsComplete,
         isLocked: !backgroundComplete,
@@ -418,7 +515,7 @@ function App() {
         ),
       },
       {
-        id: 7,
+        id: 6,
         title: "Summary",
         isComplete: summaryComplete,
         isLocked: !backgroundComplete,
@@ -454,8 +551,7 @@ function App() {
       selectedSubclass,
       selectedBackground,
       selectedSpellsList,
-      raceComplete,
-      subraceComplete,
+      ancestryComplete,
       classComplete,
       subclassComplete,
       backgroundComplete,
@@ -518,7 +614,9 @@ function App() {
 
   return (
     <main className="app-shell">
-      {loading ? <p className="status-banner">⏳ Loading data from 5etools API...</p> : null}
+      {loading ? (
+        <p className="status-banner">⏳ Loading data from 5etools API...</p>
+      ) : null}
       {error ? (
         <div className="error-banner" role="alert">
           <strong>Data loading issue:</strong> {error}
