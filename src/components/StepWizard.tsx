@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 export interface WizardStep {
   id: number;
   title: string;
-  description: string;
   isComplete: boolean;
   isLocked: boolean;
   content: ReactNode;
@@ -12,6 +11,7 @@ export interface WizardStep {
 interface StepWizardProps {
   steps: WizardStep[];
   currentStep: number;
+  sidebar: ReactNode;
   onStepChange: (step: number) => void;
   onNext: () => void;
   onPrevious: () => void;
@@ -20,74 +20,122 @@ interface StepWizardProps {
 export function StepWizard({
   steps,
   currentStep,
+  sidebar,
   onStepChange,
   onNext,
   onPrevious,
 }: StepWizardProps) {
   const activeStep = steps.find((step) => step.id === currentStep);
+  const isFirstStep = currentStep <= 1;
+  const isLastStep = currentStep >= steps.length;
 
   return (
     <section className="wizard-shell">
       <header className="wizard-header">
         <p className="eyebrow">5etools Character Builder</p>
-        <h1>Character Builder Wizard</h1>
+        <h1>Forge Your Adventurer</h1>
         <p>
-          Build step by step and export a self-contained JSON prompt ready for
-          AI usage.
+          Build step by step. Each choice shapes your character's identity.
         </p>
       </header>
 
-      <div className="wizard-layout">
-        <ol className="wizard-steps" aria-label="Character creation steps">
-          {steps.map((step) => {
-            const isActive = step.id === currentStep;
-            const status = step.isComplete
-              ? "complete"
-              : isActive
-                ? "active"
-                : "pending";
+      {/* ── Progress Bar ───────────────────────────────────── */}
+      <nav className="wizard-progress" aria-label="Creation progress">
+        {steps.map((step, index) => {
+          const isActive = step.id === currentStep;
+          const statusClass = step.isComplete
+            ? "is-complete"
+            : isActive
+              ? "is-active"
+              : step.isLocked
+                ? "is-locked"
+                : "";
 
-            return (
-              <li key={step.id} className={`wizard-step wizard-step-${status}`}>
-                <button
-                  type="button"
-                  onClick={() => onStepChange(step.id)}
-                  disabled={step.isLocked}
-                  aria-current={isActive ? "step" : undefined}
-                >
-                  <span className="wizard-step-index">{step.id}</span>
-                  <span className="wizard-step-content">
-                    <span className="wizard-step-title">{step.title}</span>
-                    <span className="wizard-step-description">
-                      {step.description}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
+          const canClick = step.isComplete && !isActive;
 
-        <div className="wizard-panel">
-          <div className="wizard-step-panel">{activeStep?.content}</div>
+          return (
+            <div key={step.id} style={{ display: "contents" }}>
+              <div
+                className={`wizard-progress-step ${statusClass} ${canClick ? "clickable" : ""}`}
+                onClick={canClick ? () => onStepChange(step.id) : undefined}
+                role={canClick ? "button" : undefined}
+                tabIndex={canClick ? 0 : undefined}
+                onKeyDown={
+                  canClick
+                    ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onStepChange(step.id);
+                        }
+                      }
+                    : undefined
+                }
+              >
+                <span className="wizard-progress-indicator">
+                  {step.isComplete ? "✓" : step.id}
+                </span>
+                <span className="wizard-progress-label">{step.title}</span>
+              </div>
+
+              {index < steps.length - 1 && (
+                <div
+                  className={`wizard-progress-connector ${step.isComplete ? "filled" : ""}`}
+                />
+              )}
+            </div>
+          );
+        })}
+      </nav>
+
+      {/* ── Body ───────────────────────────────────────────── */}
+      <div className="wizard-body">
+        {sidebar}
+
+        <div className="wizard-main">
+          <div className="wizard-step-panel" key={currentStep}>
+            {activeStep?.content}
+          </div>
 
           <div className="wizard-actions">
             <button
               type="button"
               className="button secondary"
               onClick={onPrevious}
-              disabled={currentStep <= 1}
+              disabled={isFirstStep}
             >
-              Previous
+              ← Previous
             </button>
-            <button
-              type="button"
-              className="button primary"
-              onClick={onNext}
-              disabled={!activeStep?.isComplete || currentStep >= steps.length}
-            >
-              Next
-            </button>
+
+            <div className="wizard-actions-group">
+              <span
+                style={{
+                  fontSize: "0.78rem",
+                  color: "var(--text-muted)",
+                }}
+              >
+                Step {currentStep} of {steps.length}
+              </span>
+
+              {isLastStep ? (
+                <button
+                  type="button"
+                  className="button primary"
+                  disabled={!activeStep?.isComplete}
+                  style={{ cursor: activeStep?.isComplete ? "pointer" : "not-allowed" }}
+                >
+                  ✦ Finish
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="button primary"
+                  onClick={onNext}
+                  disabled={!activeStep?.isComplete}
+                >
+                  Next →
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

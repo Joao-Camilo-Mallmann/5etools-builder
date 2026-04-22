@@ -1,3 +1,5 @@
+import { useMemo, useState } from "react";
+
 import type { BuilderClass } from "../types";
 
 interface ClassPickerProps {
@@ -11,38 +13,77 @@ export function ClassPicker({
   selectedClassId,
   onSelect,
 }: ClassPickerProps) {
-  const selectedClass =
-    classes.find((builderClass) => builderClass.id === selectedClassId) ?? null;
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return classes;
+    const query = search.toLowerCase();
+    return classes.filter(
+      (c) =>
+        c.name.toLowerCase().includes(query) ||
+        c.source.toLowerCase().includes(query),
+    );
+  }, [classes, search]);
 
   return (
     <section>
-      <h2>Step 3: Choose Class</h2>
+      <div className="picker-header">
+        <h2>Choose Your Class</h2>
+        <p>
+          Your class defines your combat style, abilities, and role in the
+          party.
+        </p>
+      </div>
 
-      <label className="field-label" htmlFor="class-select">
-        Class
-      </label>
-      <select
-        id="class-select"
-        value={selectedClassId ?? ""}
-        onChange={(event) => onSelect(event.target.value || null)}
-      >
-        <option value="">Select a class</option>
-        {classes.map((builderClass) => (
-          <option key={builderClass.id} value={builderClass.id}>
-            {builderClass.name} ({builderClass.source})
-          </option>
-        ))}
-      </select>
+      <div className="picker-search">
+        <span className="picker-search-icon">🔍</span>
+        <input
+          type="text"
+          placeholder="Search classes..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          id="class-search"
+        />
+      </div>
 
-      {selectedClass ? (
-        <article className="detail-card">
-          <h3>
-            {selectedClass.name} <span>({selectedClass.source})</span>
-          </h3>
-          <p className="step-help">MVP mode: listing API data only.</p>
-        </article>
+      <p className="picker-count">
+        {filtered.length} class{filtered.length !== 1 ? "es" : ""} available
+        {search && ` (filtered from ${classes.length})`}
+      </p>
+
+      {filtered.length > 0 ? (
+        <div className="picker-grid">
+          {filtered.map((builderClass) => (
+            <div
+              key={builderClass.id}
+              className={`picker-card ${selectedClassId === builderClass.id ? "selected" : ""}`}
+              onClick={() =>
+                onSelect(
+                  selectedClassId === builderClass.id ? null : builderClass.id,
+                )
+              }
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(
+                    selectedClassId === builderClass.id
+                      ? null
+                      : builderClass.id,
+                  );
+                }
+              }}
+            >
+              <span className="picker-card-name">{builderClass.name}</span>
+              <span className="picker-card-source">{builderClass.source}</span>
+            </div>
+          ))}
+        </div>
       ) : (
-        <p className="empty-state">Select a class to continue.</p>
+        <p className="picker-empty">
+          No classes match "{search}". Try a different search.
+        </p>
       )}
     </section>
   );

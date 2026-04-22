@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import "./App.css";
 import backgroundsApi from "./api/backgrounds";
@@ -7,15 +7,23 @@ import racesApi from "./api/races";
 import spellcastingApi from "./api/spellcasting";
 import { BackgroundPicker } from "./components/BackgroundPicker";
 import { ClassPicker } from "./components/ClassPicker";
+import { FinalSummary } from "./components/FinalSummary";
 import { RacePicker } from "./components/RacePicker";
+import { SelectionsSidebar } from "./components/SelectionsSidebar";
 import { SpellPicker } from "./components/SpellPicker";
 import { StepWizard, type WizardStep } from "./components/StepWizard";
+import { SubclassPicker } from "./components/SubclassPicker";
+import { SubracePicker } from "./components/SubracePicker";
 import type {
-    BuilderBackground,
-    BuilderClass,
-    BuilderRace,
-    BuilderSpell,
+  BuilderBackground,
+  BuilderClass,
+  BuilderRace,
+  BuilderSpell,
+  BuilderSubclass,
+  BuilderSubrace,
 } from "./types";
+import type { UpstreamSubclass } from "./types/classes";
+import type { UpstreamSubrace } from "./types/races";
 
 function makeId(name: string, source: string): string {
   return `${name}|${source}`.toLowerCase();
@@ -39,23 +47,79 @@ function toEntity(value: unknown, fallbackName: string): BuilderRace {
   };
 }
 
+function toBuilderSubclass(value: unknown): BuilderSubclass | null {
+  const record = typeof value === "object" && value !== null ? value : null;
+  if (!record) return null;
+
+  const raw = record as UpstreamSubclass;
+  if (typeof raw.name !== "string" || typeof raw.source !== "string") {
+    return null;
+  }
+
+  const features = Array.isArray(raw.subclassFeatures)
+    ? raw.subclassFeatures.filter(
+        (feature): feature is string => typeof feature === "string",
+      )
+    : [];
+
+  return {
+    id: makeId(raw.name, raw.source),
+    name: raw.name,
+    source: raw.source,
+    className: typeof raw.className === "string" ? raw.className : undefined,
+    classSource:
+      typeof raw.classSource === "string" ? raw.classSource : undefined,
+    features,
+  };
+}
+
+function toBuilderSubrace(value: unknown): BuilderSubrace | null {
+  const record = typeof value === "object" && value !== null ? value : null;
+  if (!record) return null;
+
+  const raw = record as UpstreamSubrace;
+  if (typeof raw.name !== "string" || typeof raw.source !== "string") {
+    return null;
+  }
+
+  return {
+    id: makeId(raw.name, raw.source),
+    name: raw.name,
+    source: raw.source,
+    raceName: typeof raw.raceName === "string" ? raw.raceName : undefined,
+    raceSource: typeof raw.raceSource === "string" ? raw.raceSource : undefined,
+  };
+}
+
 function App() {
   const [currentStep, setCurrentStep] = useState(1);
 
+  // ── Data from API ──────────────────────────────────────────
   const [races, setRaces] = useState<BuilderRace[]>([]);
+  const [subraces, setSubraces] = useState<BuilderSubrace[]>([]);
   const [classes, setClasses] = useState<BuilderClass[]>([]);
+  const [subclasses, setSubclasses] = useState<BuilderSubclass[]>([]);
   const [backgrounds, setBackgrounds] = useState<BuilderBackground[]>([]);
   const [spells, setSpells] = useState<BuilderSpell[]>([]);
 
+  // ── User selections ────────────────────────────────────────
   const [selectedRaceId, setSelectedRaceId] = useState<string | null>(null);
+  const [selectedSubraceId, setSelectedSubraceId] = useState<string | null>(
+    null,
+  );
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [selectedSubclassId, setSelectedSubclassId] = useState<string | null>(
+    null,
+  );
   const [selectedBackgroundId, setSelectedBackgroundId] = useState<
     string | null
   >(null);
+  const [selectedSpellIds, setSelectedSpellIds] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ── Load data ──────────────────────────────────────────────
   useEffect(() => {
     async function loadAll(): Promise<void> {
       setLoading(true);
@@ -74,12 +138,20 @@ function App() {
           spellcastingApi.getIndex(),
         ]);
 
+        // Races + subraces
         const raceValues = Array.isArray(
           (racesPayload as { race?: unknown }).race,
         )
           ? ((racesPayload as { race: unknown[] }).race as unknown[])
           : [];
 
+        const subraceValues = Array.isArray(
+          (racesPayload as { subrace?: unknown }).subrace,
+        )
+          ? ((racesPayload as { subrace: unknown[] }).subrace as unknown[])
+          : [];
+
+        // Classes
         const classFiles = [
           ...new Set(
             Object.values(
@@ -88,6 +160,7 @@ function App() {
           ),
         ];
 
+        // Spells
         const spellFiles = [
           ...new Set(
             Object.values((spellIndex as Record<string, unknown>) ?? {}).filter(
@@ -108,10 +181,15 @@ function App() {
         ]);
 
         const classValues: unknown[] = [];
+        const subclassValues: unknown[] = [];
         for (const payload of classPayloads) {
           const entries = (payload as { class?: unknown }).class;
           if (Array.isArray(entries)) {
             classValues.push(...entries);
+          }
+          const subclassEntries = (payload as { subclass?: unknown }).subclass;
+          if (Array.isArray(subclassEntries)) {
+            subclassValues.push(...subclassEntries);
           }
         }
 
@@ -130,23 +208,22 @@ function App() {
               .background as unknown[])
           : [];
 
-        const normalizedRaces = raceValues.map((value) =>
-          toEntity(value, "Unknown Race"),
+        setRaces(raceValues.map((v) => toEntity(v, "Unknown Race")));
+        setSubraces(
+          subraceValues
+            .map((v) => toBuilderSubrace(v))
+            .filter((v): v is BuilderSubrace => v !== null),
         );
-        const normalizedClasses = classValues.map((value) =>
-          toEntity(value, "Unknown Class"),
+        setClasses(classValues.map((v) => toEntity(v, "Unknown Class")));
+        setSubclasses(
+          subclassValues
+            .map((v) => toBuilderSubclass(v))
+            .filter((v): v is BuilderSubclass => v !== null),
         );
-        const normalizedBackgrounds = backgroundValues.map((value) =>
-          toEntity(value, "Unknown Background"),
+        setBackgrounds(
+          backgroundValues.map((v) => toEntity(v, "Unknown Background")),
         );
-        const normalizedSpells = spellValues.map((value) =>
-          toEntity(value, "Unknown Spell"),
-        );
-
-        setRaces(normalizedRaces);
-        setClasses(normalizedClasses);
-        setBackgrounds(normalizedBackgrounds);
-        setSpells(normalizedSpells);
+        setSpells(spellValues.map((v) => toEntity(v, "Unknown Spell")));
       } catch (caughtError) {
         if (caughtError instanceof Error) {
           setError(caughtError.message);
@@ -161,42 +238,163 @@ function App() {
     void loadAll();
   }, []);
 
+  // ── Derived data ───────────────────────────────────────────
+  const selectedRace = useMemo(
+    () => races.find((r) => r.id === selectedRaceId) ?? null,
+    [races, selectedRaceId],
+  );
+
+  const selectedSubrace = useMemo(
+    () => subraces.find((sr) => sr.id === selectedSubraceId) ?? null,
+    [subraces, selectedSubraceId],
+  );
+
+  const selectedClass = useMemo(
+    () => classes.find((c) => c.id === selectedClassId) ?? null,
+    [classes, selectedClassId],
+  );
+
+  const selectedSubclass = useMemo(
+    () => subclasses.find((sc) => sc.id === selectedSubclassId) ?? null,
+    [subclasses, selectedSubclassId],
+  );
+
+  const selectedBackground = useMemo(
+    () => backgrounds.find((bg) => bg.id === selectedBackgroundId) ?? null,
+    [backgrounds, selectedBackgroundId],
+  );
+
+  const selectedSpellsList = useMemo(
+    () => spells.filter((s) => selectedSpellIds.includes(s.id)),
+    [spells, selectedSpellIds],
+  );
+
+  const filteredSubraces = useMemo(() => {
+    if (!selectedRace) return [];
+    return subraces.filter(
+      (sr) =>
+        sr.raceName === selectedRace.name &&
+        sr.raceSource === selectedRace.source,
+    );
+  }, [selectedRace, subraces]);
+
+  const filteredSubclasses = useMemo(() => {
+    if (!selectedClass) return [];
+    return subclasses.filter(
+      (sc) =>
+        sc.className === selectedClass.name &&
+        sc.classSource === selectedClass.source,
+    );
+  }, [selectedClass, subclasses]);
+
+  // ── Handlers ───────────────────────────────────────────────
+  const handleRaceSelect = (raceId: string | null) => {
+    setSelectedRaceId(raceId);
+    setSelectedSubraceId(null);
+  };
+
+  const handleClassSelect = (classId: string | null) => {
+    setSelectedClassId(classId);
+    setSelectedSubclassId(null);
+  };
+
+  const handleToggleSpell = useCallback((spellId: string) => {
+    setSelectedSpellIds((prev) =>
+      prev.includes(spellId)
+        ? prev.filter((id) => id !== spellId)
+        : [...prev, spellId],
+    );
+  }, []);
+
+  const handleClearSpells = useCallback(() => {
+    setSelectedSpellIds([]);
+  }, []);
+
+  const handleStartOver = () => {
+    setCurrentStep(1);
+    setSelectedRaceId(null);
+    setSelectedSubraceId(null);
+    setSelectedClassId(null);
+    setSelectedSubclassId(null);
+    setSelectedBackgroundId(null);
+    setSelectedSpellIds([]);
+  };
+
+  // ── Steps definition ──────────────────────────────────────
+  // Step completion: require selection except for optional steps
+  const raceComplete = selectedRaceId !== null;
+  const subraceComplete =
+    filteredSubraces.length === 0 || selectedSubraceId !== null;
+  const classComplete = selectedClassId !== null;
+  const subclassComplete =
+    filteredSubclasses.length === 0 || selectedSubclassId !== null;
+  const backgroundComplete = selectedBackgroundId !== null;
+  const spellsComplete = true; // Spells are optional
+  const summaryComplete = true;
+
   const steps: WizardStep[] = useMemo(
     () => [
       {
         id: 1,
-        title: "Races",
-        description: "List from API",
-        isComplete: true,
+        title: "Race",
+        isComplete: raceComplete,
         isLocked: false,
         content: (
           <RacePicker
             races={races}
             selectedRaceId={selectedRaceId}
-            onSelect={setSelectedRaceId}
+            onSelect={handleRaceSelect}
           />
         ),
       },
       {
         id: 2,
-        title: "Classes",
-        description: "List from API",
-        isComplete: true,
-        isLocked: false,
+        title: "Subrace",
+        isComplete: subraceComplete,
+        isLocked: !raceComplete,
         content: (
-          <ClassPicker
-            classes={classes}
-            selectedClassId={selectedClassId}
-            onSelect={setSelectedClassId}
+          <SubracePicker
+            subraces={filteredSubraces}
+            selectedSubraceId={selectedSubraceId}
+            hasSelectedRace={raceComplete}
+            raceName={selectedRace?.name ?? null}
+            onSelect={setSelectedSubraceId}
           />
         ),
       },
       {
         id: 3,
-        title: "Backgrounds",
-        description: "List from API",
-        isComplete: true,
-        isLocked: false,
+        title: "Class",
+        isComplete: classComplete,
+        isLocked: !raceComplete || !subraceComplete,
+        content: (
+          <ClassPicker
+            classes={classes}
+            selectedClassId={selectedClassId}
+            onSelect={handleClassSelect}
+          />
+        ),
+      },
+      {
+        id: 4,
+        title: "Subclass",
+        isComplete: subclassComplete,
+        isLocked: !classComplete,
+        content: (
+          <SubclassPicker
+            subclasses={filteredSubclasses}
+            selectedSubclassId={selectedSubclassId}
+            hasSelectedClass={classComplete}
+            className={selectedClass?.name ?? null}
+            onSelect={setSelectedSubclassId}
+          />
+        ),
+      },
+      {
+        id: 5,
+        title: "Background",
+        isComplete: backgroundComplete,
+        isLocked: !classComplete || !subclassComplete,
         content: (
           <BackgroundPicker
             backgrounds={backgrounds}
@@ -206,43 +404,137 @@ function App() {
         ),
       },
       {
-        id: 4,
+        id: 6,
         title: "Spells",
-        description: "List from API",
-        isComplete: true,
-        isLocked: false,
-        content: <SpellPicker spells={spells} />,
+        isComplete: spellsComplete,
+        isLocked: !backgroundComplete,
+        content: (
+          <SpellPicker
+            spells={spells}
+            selectedSpellIds={selectedSpellIds}
+            onToggleSpell={handleToggleSpell}
+            onClearSpells={handleClearSpells}
+          />
+        ),
+      },
+      {
+        id: 7,
+        title: "Summary",
+        isComplete: summaryComplete,
+        isLocked: !backgroundComplete,
+        content: (
+          <FinalSummary
+            race={selectedRace}
+            subrace={selectedSubrace}
+            builderClass={selectedClass}
+            subclass={selectedSubclass}
+            background={selectedBackground}
+            selectedSpells={selectedSpellsList}
+            onStartOver={handleStartOver}
+          />
+        ),
       },
     ],
     [
-      backgrounds,
-      classes,
       races,
-      selectedBackgroundId,
-      selectedClassId,
-      selectedRaceId,
+      classes,
+      backgrounds,
       spells,
+      filteredSubraces,
+      filteredSubclasses,
+      selectedRaceId,
+      selectedSubraceId,
+      selectedClassId,
+      selectedSubclassId,
+      selectedBackgroundId,
+      selectedSpellIds,
+      selectedRace,
+      selectedSubrace,
+      selectedClass,
+      selectedSubclass,
+      selectedBackground,
+      selectedSpellsList,
+      raceComplete,
+      subraceComplete,
+      classComplete,
+      subclassComplete,
+      backgroundComplete,
+      spellsComplete,
+      summaryComplete,
+      handleToggleSpell,
+      handleClearSpells,
+    ],
+  );
+
+  // ── Navigation guards ─────────────────────────────────────
+  const handleNext = () => {
+    const active = steps.find((s) => s.id === currentStep);
+    if (active?.isComplete) {
+      setCurrentStep((prev) => Math.min(prev + 1, steps.length));
+    }
+  };
+
+  const handlePrevious = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleStepChange = (stepId: number) => {
+    const target = steps.find((s) => s.id === stepId);
+    if (target && !target.isLocked) {
+      setCurrentStep(stepId);
+    }
+  };
+
+  // ── Sidebar data ───────────────────────────────────────────
+  const sidebarItems = useMemo(
+    () => [
+      { icon: "🧬", label: "Race", value: selectedRace?.name ?? null },
+      { icon: "🌿", label: "Subrace", value: selectedSubrace?.name ?? null },
+      { icon: "⚔", label: "Class", value: selectedClass?.name ?? null },
+      { icon: "🛡", label: "Subclass", value: selectedSubclass?.name ?? null },
+      {
+        icon: "📜",
+        label: "Background",
+        value: selectedBackground?.name ?? null,
+      },
+      {
+        icon: "🔮",
+        label: "Spells",
+        value:
+          selectedSpellIds.length > 0
+            ? `${selectedSpellIds.length} selected`
+            : null,
+      },
+    ],
+    [
+      selectedRace,
+      selectedSubrace,
+      selectedClass,
+      selectedSubclass,
+      selectedBackground,
+      selectedSpellIds,
     ],
   );
 
   return (
     <main className="app-shell">
-      {loading ? <p className="status-banner">Loading API data...</p> : null}
+      {loading ? <p className="status-banner">⏳ Loading data from 5etools API...</p> : null}
       {error ? (
         <div className="error-banner" role="alert">
           <strong>Data loading issue:</strong> {error}
         </div>
       ) : null}
 
-      <StepWizard
-        steps={steps}
-        currentStep={currentStep}
-        onStepChange={setCurrentStep}
-        onNext={() =>
-          setCurrentStep((prev) => Math.min(prev + 1, steps.length))
-        }
-        onPrevious={() => setCurrentStep((prev) => Math.max(prev - 1, 1))}
-      />
+      {!loading && !error && (
+        <StepWizard
+          steps={steps}
+          currentStep={currentStep}
+          sidebar={<SelectionsSidebar items={sidebarItems} />}
+          onStepChange={handleStepChange}
+          onNext={handleNext}
+          onPrevious={handlePrevious}
+        />
+      )}
     </main>
   );
 }
