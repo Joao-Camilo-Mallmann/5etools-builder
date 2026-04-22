@@ -39,16 +39,7 @@ export function RacePicker({
           <h3>
             {selectedRace.name} <span>({selectedRace.source})</span>
           </h3>
-          <p>
-            <strong>Size:</strong> {selectedRace.sizeSummary}
-          </p>
-          <p>
-            <strong>Speed:</strong> {selectedRace.speedSummary}
-          </p>
-          <p>
-            <strong>Ability:</strong> {selectedRace.abilitySummary}
-          </p>
-          <p>{selectedRace.entriesSummary}</p>
+          <p className="step-help">MVP mode: listing API data only.</p>
         </article>
       ) : (
         <p className="empty-state">Select a race to continue.</p>

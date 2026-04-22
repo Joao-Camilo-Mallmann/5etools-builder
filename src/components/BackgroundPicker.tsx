@@ -40,24 +40,7 @@ export function BackgroundPicker({
           <h3>
             {selectedBackground.name} <span>({selectedBackground.source})</span>
           </h3>
-          <p>
-            <strong>Ability:</strong> {selectedBackground.abilitySummary}
-          </p>
-          <p>{selectedBackground.entriesSummary}</p>
-          {selectedBackground.startingEquipmentText.length > 0 ? (
-            <>
-              <h4>Starting Equipment</h4>
-              <ul className="compact-list">
-                {selectedBackground.startingEquipmentText.map((equipment) => (
-                  <li key={equipment}>{equipment}</li>
-                ))}
-              </ul>
-            </>
-          ) : (
-            <p className="empty-state">
-              No starting equipment details available.
-            </p>
-          )}
+          <p className="step-help">MVP mode: listing API data only.</p>
         </article>
       ) : (
         <p className="empty-state">Select a background to continue.</p>

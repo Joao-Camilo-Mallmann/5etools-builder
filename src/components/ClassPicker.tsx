@@ -39,17 +39,7 @@ export function ClassPicker({
           <h3>
             {selectedClass.name} <span>({selectedClass.source})</span>
           </h3>
-          <p>
-            <strong>Hit Die:</strong>{" "}
-            {selectedClass.hitDie ? `d${selectedClass.hitDie}` : "Unknown"}
-          </p>
-          <p>
-            <strong>Spellcasting:</strong> {selectedClass.casterProgression}
-          </p>
-          <p>
-            <strong>Spellcasting Ability:</strong>{" "}
-            {selectedClass.spellcastingAbility ?? "N/A"}
-          </p>
+          <p className="step-help">MVP mode: listing API data only.</p>
         </article>
       ) : (
         <p className="empty-state">Select a class to continue.</p>
