@@ -1,4 +1,13 @@
+import {
+    CheckCircle,
+    ChevronLeft,
+    ChevronRight,
+    Moon,
+    Shield,
+    Sun,
+} from "lucide-react";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 
 export interface WizardStep {
   id: number;
@@ -29,14 +38,40 @@ export function StepWizard({
   const isFirstStep = currentStep <= 1;
   const isLastStep = currentStep >= steps.length;
 
+  // ── Theme toggle ────────────────────────────────────────────
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    return (
+      (localStorage.getItem("5ebuilder-theme") as "dark" | "light") ?? "dark"
+    );
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("5ebuilder-theme", theme);
+  }, [theme]);
+
   return (
     <section className="wizard-shell">
+      {/* ── Compact header bar ─────────────────────────────── */}
       <header className="wizard-header">
-        <p className="eyebrow">5etools Character Builder</p>
-        <h1>Forge Your Adventurer</h1>
-        <p>
-          Build step by step. Each choice shapes your character's identity.
-        </p>
+        <div className="wizard-header__inner">
+          <span className="wizard-header__title">
+            <Shield size={20} className="wizard-header__crest" />
+            <span className="wizard-header__eyebrow">5etools</span>
+            Character Builder
+          </span>
+          <button
+            type="button"
+            className="wizard-theme-btn"
+            onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+            title={
+              theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+            }
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+          </button>
+        </div>
       </header>
 
       {/* ── Progress Bar ───────────────────────────────────── */}
@@ -60,6 +95,7 @@ export function StepWizard({
                 onClick={canClick ? () => onStepChange(step.id) : undefined}
                 role={canClick ? "button" : undefined}
                 tabIndex={canClick ? 0 : undefined}
+                title={step.title}
                 onKeyDown={
                   canClick
                     ? (e) => {
@@ -72,7 +108,7 @@ export function StepWizard({
                 }
               >
                 <span className="wizard-progress-indicator">
-                  {step.isComplete ? "✓" : step.id}
+                  {step.isComplete ? <CheckCircle size={14} /> : step.id}
                 </span>
                 <span className="wizard-progress-label">{step.title}</span>
               </div>
@@ -103,17 +139,19 @@ export function StepWizard({
               onClick={onPrevious}
               disabled={isFirstStep}
             >
-              ← Previous
+              <ChevronLeft size={14} /> Previous
             </button>
 
             <div className="wizard-actions-group">
               <span
                 style={{
-                  fontSize: "0.78rem",
+                  fontSize: "0.8rem",
                   color: "var(--text-muted)",
+                  fontFamily: "var(--font-heading)",
+                  letterSpacing: "0.04em",
                 }}
               >
-                Step {currentStep} of {steps.length}
+                {currentStep} / {steps.length}
               </span>
 
               {isLastStep ? (
@@ -121,9 +159,11 @@ export function StepWizard({
                   type="button"
                   className="button primary"
                   disabled={!activeStep?.isComplete}
-                  style={{ cursor: activeStep?.isComplete ? "pointer" : "not-allowed" }}
+                  style={{
+                    cursor: activeStep?.isComplete ? "pointer" : "not-allowed",
+                  }}
                 >
-                  ✦ Finish
+                  <CheckCircle size={14} /> Finish
                 </button>
               ) : (
                 <button
@@ -132,7 +172,7 @@ export function StepWizard({
                   onClick={onNext}
                   disabled={!activeStep?.isComplete}
                 >
-                  Next →
+                  Next <ChevronRight size={14} />
                 </button>
               )}
             </div>

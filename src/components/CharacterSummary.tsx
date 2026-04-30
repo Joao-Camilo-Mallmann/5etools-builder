@@ -42,7 +42,7 @@ export function CharacterSummary({
 }: CharacterSummaryProps) {
   return (
     <section>
-      <h2>Step 8: Character Summary</h2>
+      <h2>Character Summary</h2>
 
       <article className="detail-card">
         <h3>{name.trim() || "Unnamed Adventurer"}</h3>

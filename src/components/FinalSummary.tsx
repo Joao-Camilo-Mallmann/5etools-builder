@@ -1,17 +1,26 @@
+import {
+    Clipboard,
+    Dna,
+    RotateCcw,
+    Scroll,
+    Shield,
+    Sparkles,
+    Sword,
+    Zap,
+} from "lucide-react";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 import type {
-  BuilderBackground,
-  BuilderClass,
-  BuilderRace,
-  BuilderSpell,
-  BuilderSubclass,
-  BuilderSubrace,
+    BuilderBackground,
+    BuilderClass,
+    BuilderRace,
+    BuilderSpell,
+    BuilderSubclass,
 } from "../types";
 
 interface FinalSummaryProps {
   race: BuilderRace | null;
-  subrace: BuilderSubrace | null;
   builderClass: BuilderClass | null;
   subclass: BuilderSubclass | null;
   background: BuilderBackground | null;
@@ -21,7 +30,6 @@ interface FinalSummaryProps {
 
 export function FinalSummary({
   race,
-  subrace,
   builderClass,
   subclass,
   background,
@@ -35,11 +43,7 @@ export function FinalSummary({
     const parts: string[] = [];
 
     if (race) {
-      let racePart = race.name;
-      if (subrace) {
-        racePart = `${subrace.name} ${race.name}`;
-      }
-      parts.push(racePart);
+      parts.push(race.name);
     }
 
     if (builderClass) {
@@ -63,16 +67,13 @@ export function FinalSummary({
     }
 
     return description + ".";
-  }, [race, subrace, builderClass, subclass, background, selectedSpells]);
+  }, [race, builderClass, subclass, background, selectedSpells]);
 
   const handleExport = () => {
     const payload: Record<string, unknown> = {};
 
     if (race) {
       payload.race = { name: race.name, source: race.source };
-    }
-    if (subrace) {
-      payload.subrace = { name: subrace.name, source: subrace.source };
     }
     if (builderClass) {
       payload.class = { name: builderClass.name, source: builderClass.source };
@@ -113,31 +114,35 @@ export function FinalSummary({
     }
   };
 
-  const summaryItems = [
-    { label: "Race", value: race?.name, source: race?.source, icon: "🧬" },
+  const summaryItems: {
+    label: string;
+    value: string | undefined;
+    source: string | undefined;
+    icon: ReactNode;
+  }[] = [
     {
-      label: "Subrace",
-      value: subrace?.name,
-      source: subrace?.source,
-      icon: "🌿",
+      label: "Race",
+      value: race?.name,
+      source: race?.source,
+      icon: <Dna size={13} />,
     },
     {
       label: "Class",
       value: builderClass?.name,
       source: builderClass?.source,
-      icon: "⚔",
+      icon: <Sword size={13} />,
     },
     {
       label: "Subclass",
       value: subclass?.name,
       source: subclass?.source,
-      icon: "🛡",
+      icon: <Shield size={13} />,
     },
     {
       label: "Background",
       value: background?.name,
       source: background?.source,
-      icon: "📜",
+      icon: <Scroll size={13} />,
     },
   ];
 
@@ -168,7 +173,9 @@ export function FinalSummary({
 
       {selectedSpells.length > 0 && (
         <div className="summary-spells-section">
-          <h3>🔮 Selected Spells ({selectedSpells.length})</h3>
+          <h3>
+            <Sparkles size={14} /> Selected Spells ({selectedSpells.length})
+          </h3>
           <div className="summary-spells-grid">
             {selectedSpells.map((spell) => (
               <span key={spell.id} className="summary-spell-tag">
@@ -185,14 +192,10 @@ export function FinalSummary({
           className="button secondary"
           onClick={onStartOver}
         >
-          ↺ Start Over
+          <RotateCcw size={14} /> Start Over
         </button>
-        <button
-          type="button"
-          className="button primary"
-          onClick={handleExport}
-        >
-          ⚡ Generate Export
+        <button type="button" className="button primary" onClick={handleExport}>
+          <Zap size={14} /> Generate Export
         </button>
       </div>
 
@@ -209,7 +212,7 @@ export function FinalSummary({
               className="button secondary"
               onClick={handleCopy}
             >
-              📋 Copy JSON
+              <Clipboard size={14} /> Copy JSON
             </button>
           </div>
 

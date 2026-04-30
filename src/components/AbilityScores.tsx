@@ -53,7 +53,7 @@ export function AbilityScoresEditor({
 }: AbilityScoresProps) {
   return (
     <section>
-      <h2>Step 6: Configure Ability Scores</h2>
+      <h2>Configure Ability Scores</h2>
 
       <div
         className="method-group"

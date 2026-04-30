@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
+
 interface SelectionItem {
-  icon: string;
+  icon: ReactNode;
   label: string;
   value: string | null;
 }

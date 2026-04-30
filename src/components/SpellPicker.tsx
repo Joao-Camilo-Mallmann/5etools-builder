@@ -1,3 +1,4 @@
+import { Sparkles, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { BuilderSpell } from "../types";
@@ -46,7 +47,13 @@ export function SpellPicker({
   return (
     <section>
       <div className="picker-header">
-        <h2>Choose Your Spells</h2>
+        <h2>
+          <Sparkles
+            size={16}
+            style={{ verticalAlign: "middle", marginRight: 6 }}
+          />
+          Choose Your Spells
+        </h2>
         <p>Select the spells your character knows or has prepared.</p>
       </div>
 
@@ -104,9 +111,7 @@ export function SpellPicker({
                         <small>({spell.source})</small>
                       </span>
                       {spell.level !== undefined && (
-                        <span className="spell-meta">
-                          Level {spell.level}
-                        </span>
+                        <span className="spell-meta">Level {spell.level}</span>
                       )}
                     </div>
                   </label>
@@ -143,7 +148,7 @@ export function SpellPicker({
                       onClick={() => onToggleSpell(spell.id)}
                       title={`Remove ${spell.name}`}
                     >
-                      ✕
+                      <X size={12} />
                     </button>
                   </li>
                 ))}

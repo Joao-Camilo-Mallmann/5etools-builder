@@ -1,6 +1,7 @@
+import { Leaf, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import type { BuilderRace, BuilderSubrace } from "../types";
+import type { BuilderRace } from "../types";
 
 function getRawPage(raw: unknown): number | null {
   if (typeof raw !== "object" || raw === null) return null;
@@ -14,55 +15,45 @@ function getRawSource(raw: unknown): string | null {
   return typeof source === "string" ? source : null;
 }
 
+type SortKey = "name" | "source";
+type SortDir = "asc" | "desc";
+
 interface RacePickerProps {
   races: BuilderRace[];
   selectedRaceId: string | null;
-  subraces: BuilderSubrace[];
-  selectedSubraceId: string | null;
   onSelect: (raceId: string | null) => void;
-  onSelectSubrace: (subraceId: string | null) => void;
 }
 
 export function RacePicker({
   races,
   selectedRaceId,
-  subraces,
-  selectedSubraceId,
   onSelect,
-  onSelectSubrace,
 }: RacePickerProps) {
   const [search, setSearch] = useState("");
-  const [subraceSearch, setSubraceSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const selectedRace = useMemo(
-    () => races.find((race) => race.id === selectedRaceId) ?? null,
+    () => races.find((r) => r.id === selectedRaceId) ?? null,
     [races, selectedRaceId],
   );
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return races;
-    const query = search.toLowerCase();
-    return races.filter(
-      (race) =>
-        race.name.toLowerCase().includes(query) ||
-        race.source.toLowerCase().includes(query),
-    );
-  }, [races, search]);
-
-  const filteredSubraces = useMemo(() => {
-    if (!subraceSearch.trim()) return subraces;
-    const query = subraceSearch.toLowerCase();
-    return subraces.filter(
-      (subrace) =>
-        subrace.name.toLowerCase().includes(query) ||
-        subrace.source.toLowerCase().includes(query),
-    );
-  }, [subraces, subraceSearch]);
-
-  const selectedSubrace = useMemo(
-    () => subraces.find((subrace) => subrace.id === selectedSubraceId) ?? null,
-    [subraces, selectedSubraceId],
-  );
+    const q = search.trim().toLowerCase();
+    const list = q
+      ? races.filter(
+          (r) =>
+            r.name.toLowerCase().includes(q) ||
+            r.source.toLowerCase().includes(q),
+        )
+      : [...races];
+    list.sort((a, b) => {
+      const av = a[sortKey].toLowerCase();
+      const bv = b[sortKey].toLowerCase();
+      return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+    return list;
+  }, [races, search, sortKey, sortDir]);
 
   const selectedRaceVersions = useMemo(() => {
     if (!selectedRace) return [];
@@ -73,215 +64,178 @@ export function RacePicker({
 
   const debugPayload = useMemo(() => {
     if (!selectedRace) return "";
-
     const racePayload = selectedRaceVersions.length
       ? selectedRaceVersions
       : selectedRace.raw
         ? [selectedRace.raw]
         : [];
-
-    const subracePayload = filteredSubraces
-      .map((subrace) => subrace.raw)
-      .filter((raw): raw is Record<string, unknown> => raw !== undefined);
-
     return JSON.stringify(
       {
-        _meta: {
-          internalCopies: ["race", "subrace"],
-        },
+        _meta: { internalCopies: ["race"] },
         race: racePayload,
-        subrace: subracePayload,
       },
       null,
       2,
     );
-  }, [filteredSubraces, selectedRace, selectedRaceVersions]);
+  }, [selectedRace, selectedRaceVersions]);
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+  const si = (k: SortKey, cur: SortKey, dir: SortDir) =>
+    cur === k ? (dir === "asc" ? " ▲" : " ▼") : "";
 
   return (
-    <section>
-      <div className="picker-header">
-        <h2>Choose Your Race</h2>
-        <p>
-          Your race determines your heritage, abilities, and traits. Select one
-          to continue.
-        </p>
-      </div>
-
-      <div className="picker-search">
-        <span className="picker-search-icon">🔍</span>
-        <input
-          type="text"
-          placeholder="Search races..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          id="race-search"
-        />
-      </div>
-
-      <p className="picker-count">
-        {filtered.length} race{filtered.length !== 1 ? "s" : ""} available
-        {search && ` (filtered from ${races.length})`}
-      </p>
-
-      {filtered.length > 0 ? (
-        <div className="picker-grid">
-          {filtered.map((race) => (
-            <div
-              key={race.id}
-              className={`picker-card ${selectedRaceId === race.id ? "selected" : ""}`}
-              onClick={() =>
-                onSelect(selectedRaceId === race.id ? null : race.id)
-              }
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelect(selectedRaceId === race.id ? null : race.id);
-                }
-              }}
+    <section className="split-picker">
+      {/* ── Left: race list ──────────────────────────────── */}
+      <div className="split-picker__list-col">
+        <div className="split-picker__search-bar">
+          <Search size={13} className="split-picker__search-glass" />
+          <input
+            type="search"
+            id="race-search"
+            placeholder="Search races…"
+            autoComplete="off"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="split-picker__search-input"
+          />
+          {search && (
+            <button
+              className="split-picker__search-clear"
+              onClick={() => setSearch("")}
+              aria-label="Clear search"
             >
-              <span className="picker-card-name">{race.name}</span>
-              <span className="picker-card-source">{race.source}</span>
-            </div>
-          ))}
+              ×
+            </button>
+          )}
         </div>
-      ) : (
-        <p className="picker-empty">
-          No races match "{search}". Try a different search.
-        </p>
-      )}
 
-      {selectedRace ? (
-        <article className="detail-card">
-          <h3>
-            {selectedRace.name} <span>({selectedRace.source})</span>
-          </h3>
+        <div className="split-picker__sort-bar">
+          <button
+            className={`split-picker__sort-btn${sortKey === "name" ? " active" : ""}`}
+            onClick={() => toggleSort("name")}
+          >
+            Name{si("name", sortKey, sortDir)}
+          </button>
+          <button
+            className={`split-picker__sort-btn split-picker__sort-btn--grow${sortKey === "source" ? " active" : ""}`}
+            onClick={() => toggleSort("source")}
+          >
+            Source{si("source", sortKey, sortDir)}
+          </button>
+        </div>
 
-          <p>
-            <strong>Book:</strong> {selectedRace.source}
-          </p>
-
-          {selectedRaceVersions.length > 0 ? (
-            <ul className="compact-list">
-              {selectedRaceVersions.map((rawItem, index) => {
-                const source = getRawSource(rawItem) ?? "unknown";
-                const page = getRawPage(rawItem);
-                return (
-                  <li key={`${source}-${page ?? "np"}-${index}`}>
-                    {source}
-                    {page !== null ? `, page ${page}` : ""}
-                  </li>
-                );
-              })}
-            </ul>
-          ) : null}
-
-          {selectedRace.sources && selectedRace.sources.length > 1 ? (
-            <p>
-              <strong>Also found in:</strong> {selectedRace.sources.join(", ")}
-            </p>
-          ) : null}
-
-          {selectedRace.entriesSummary ? (
-            <p>{selectedRace.entriesSummary}</p>
+        <ul className="split-picker__list" role="listbox" aria-label="Races">
+          {filtered.length === 0 ? (
+            <li className="split-picker__list-empty">
+              No races match "{search}"
+            </li>
           ) : (
-            <p className="picker-empty">No race description available.</p>
+            filtered.map((race) => (
+              <li
+                key={race.id}
+                role="option"
+                aria-selected={selectedRaceId === race.id}
+                className={`split-picker__list-item${selectedRaceId === race.id ? " selected" : ""}`}
+                onClick={() =>
+                  onSelect(selectedRaceId === race.id ? null : race.id)
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelect(selectedRaceId === race.id ? null : race.id);
+                  }
+                }}
+                tabIndex={0}
+              >
+                <span className="split-picker__item-name">{race.name}</span>
+                <span className="split-picker__item-source">{race.source}</span>
+              </li>
+            ))
           )}
+        </ul>
 
-          <div className="picker-header" style={{ marginTop: "1rem" }}>
-            <h2>Choose Your Subrace</h2>
-            <p>Subraces for {selectedRace.name}.</p>
-          </div>
+        <div className="split-picker__list-count">
+          {filtered.length} of {races.length} race
+          {races.length !== 1 ? "s" : ""}
+        </div>
+      </div>
 
-          {subraces.length > 0 ? (
-            <>
-              <div className="picker-search">
-                <span className="picker-search-icon">🔍</span>
-                <input
-                  type="text"
-                  placeholder="Search subraces..."
-                  value={subraceSearch}
-                  onChange={(e) => setSubraceSearch(e.target.value)}
-                  id="subrace-search"
-                />
+      {/* ── Right: detail + subraces ──────────────────────── */}
+      <div className="split-picker__detail-col">
+        {selectedRace ? (
+          <div key={selectedRace.id}>
+            {/* Race stat block */}
+            <div className="split-picker__detail-block">
+              <div className="split-picker__detail-header">
+                <h2 className="split-picker__detail-name">
+                  {selectedRace.name}
+                </h2>
+                <span className="split-picker__detail-source">
+                  {selectedRace.source}
+                </span>
               </div>
+              <div className="split-picker__detail-body">
+                {/* Versions / also found in */}
+                {selectedRaceVersions.length > 0 && (
+                  <div className="split-picker__detail-versions">
+                    <span className="split-picker__detail-label">
+                      Printings:
+                    </span>
+                    <ul className="split-picker__detail-list">
+                      {selectedRaceVersions.map((rawItem, idx) => {
+                        const src = getRawSource(rawItem) ?? "unknown";
+                        const pg = getRawPage(rawItem);
+                        return (
+                          <li key={`${src}-${idx}`}>
+                            {src}
+                            {pg !== null ? `, p. ${pg}` : ""}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
 
-              <p className="picker-count">
-                {filteredSubraces.length} subrace
-                {filteredSubraces.length !== 1 ? "s" : ""} available
-              </p>
+                {selectedRace.sources && selectedRace.sources.length > 1 && (
+                  <p className="split-picker__detail-meta">
+                    <strong>Also in:</strong>{" "}
+                    {selectedRace.sources.slice(1).join(", ")}
+                  </p>
+                )}
 
-              {filteredSubraces.length > 0 ? (
-                <div className="picker-grid">
-                  {filteredSubraces.map((subrace) => (
-                    <div
-                      key={subrace.id}
-                      className={`picker-card ${selectedSubraceId === subrace.id ? "selected" : ""}`}
-                      onClick={() =>
-                        onSelectSubrace(
-                          selectedSubraceId === subrace.id ? null : subrace.id,
-                        )
-                      }
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          onSelectSubrace(
-                            selectedSubraceId === subrace.id
-                              ? null
-                              : subrace.id,
-                          );
-                        }
-                      }}
-                    >
-                      <span className="picker-card-name">{subrace.name}</span>
-                      <span className="picker-card-source">
-                        {subrace.source}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="picker-empty">No subraces match your search.</p>
-              )}
+                {selectedRace.entriesSummary ? (
+                  <p className="split-picker__detail-desc">
+                    {selectedRace.entriesSummary}
+                  </p>
+                ) : (
+                  <p className="split-picker__detail-empty">
+                    No description available.
+                  </p>
+                )}
 
-              {selectedSubrace ? (
-                <article
-                  className="detail-card"
-                  style={{ marginTop: "0.8rem" }}
-                >
-                  <h3>
-                    {selectedSubrace.name}{" "}
-                    <span>({selectedSubrace.source})</span>
-                  </h3>
-
-                  {selectedSubrace.entriesSummary ? (
-                    <p>{selectedSubrace.entriesSummary}</p>
-                  ) : (
-                    <p className="picker-empty">
-                      No subrace description available.
-                    </p>
-                  )}
-                </article>
-              ) : null}
-            </>
-          ) : (
-            <p className="picker-empty">
-              This race has no subrace options. You can continue to the next
-              step.
-            </p>
-          )}
-
-          {debugPayload ? (
-            <details className="raw-json-box">
-              <summary>Show raw race/subrace data (JSON)</summary>
-              <pre>{debugPayload}</pre>
-            </details>
-          ) : null}
-        </article>
-      ) : null}
+                {/* Raw JSON debug */}
+                {debugPayload && (
+                  <details className="raw-json-box">
+                    <summary>Show raw race data (JSON)</summary>
+                    <pre>{debugPayload}</pre>
+                  </details>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="split-picker__detail-initial">
+            <Leaf size={32} className="split-picker__detail-initial-icon" />
+            <p>Select a race from the list to view details.</p>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

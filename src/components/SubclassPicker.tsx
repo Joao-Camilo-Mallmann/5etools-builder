@@ -1,6 +1,10 @@
+import { CheckCircle, Scroll, Search, Sword } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { BuilderSubclass } from "../types";
+
+type SortKey = "name" | "source";
+type SortDir = "asc" | "desc";
 
 interface SubclassPickerProps {
   subclasses: BuilderSubclass[];
@@ -18,127 +22,204 @@ export function SubclassPicker({
   onSelect,
 }: SubclassPickerProps) {
   const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const selectedSubclass =
+    subclasses.find((sc) => sc.id === selectedSubclassId) ?? null;
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return subclasses;
-    const query = search.toLowerCase();
-    return subclasses.filter(
-      (sc) =>
-        sc.name.toLowerCase().includes(query) ||
-        sc.source.toLowerCase().includes(query),
-    );
-  }, [subclasses, search]);
+    const q = search.trim().toLowerCase();
+    let list = q
+      ? subclasses.filter(
+          (sc) =>
+            sc.name.toLowerCase().includes(q) ||
+            sc.source.toLowerCase().includes(q),
+        )
+      : [...subclasses];
+
+    list.sort((a, b) => {
+      const av = a[sortKey].toLowerCase();
+      const bv = b[sortKey].toLowerCase();
+      return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+    return list;
+  }, [subclasses, search, sortKey, sortDir]);
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  const sortIndicator = (key: SortKey) =>
+    sortKey === key ? (sortDir === "asc" ? " ▲" : " ▼") : "";
 
   if (!hasSelectedClass) {
     return (
-      <section>
-        <div className="picker-header">
-          <h2>Choose Subclass</h2>
+      <section className="split-picker">
+        <div className="split-picker__detail-initial split-picker__detail-initial--full">
+          <Scroll size={32} className="split-picker__detail-initial-icon" />
+          <p>Pick a class first to see its subclasses.</p>
         </div>
-        <p className="picker-empty">Pick a class first to see subclasses.</p>
       </section>
     );
   }
 
   if (subclasses.length === 0) {
     return (
-      <section>
-        <div className="picker-header">
-          <h2>Choose Subclass</h2>
+      <section className="split-picker">
+        <div className="split-picker__detail-initial split-picker__detail-initial--full">
+          <CheckCircle
+            size={32}
+            className="split-picker__detail-initial-icon"
+          />
+          <p>
+            <strong>{className}</strong> has no explicit subclass options. You
+            can proceed to the next step.
+          </p>
         </div>
-        {className && (
-          <span className="picker-context">
-            ⚔ Subclasses for: <strong>{className}</strong>
-          </span>
-        )}
-        <p className="picker-empty">
-          This class has no explicit subclass options. You can proceed.
-        </p>
       </section>
     );
   }
 
-  const selectedSubclass =
-    subclasses.find((sc) => sc.id === selectedSubclassId) ?? null;
-
   return (
-    <section>
-      <div className="picker-header">
-        <h2>Choose Your Subclass</h2>
-        <p>Specialization that defines your unique path within your class.</p>
-      </div>
+    <section className="split-picker">
+      {/* ── Left: list panel ──────────────────────────────── */}
+      <div className="split-picker__list-col">
+        {className && (
+          <div className="split-picker__context-badge">
+            <Sword size={12} /> Subclasses for: <strong>{className}</strong>
+          </div>
+        )}
 
-      {className && (
-        <span className="picker-context">
-          ⚔ Subclasses for: <strong>{className}</strong>
-        </span>
-      )}
-
-      <div className="picker-search">
-        <span className="picker-search-icon">🔍</span>
-        <input
-          type="text"
-          placeholder="Search subclasses..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          id="subclass-search"
-        />
-      </div>
-
-      <p className="picker-count">
-        {filtered.length} subclass{filtered.length !== 1 ? "es" : ""} available
-      </p>
-
-      {filtered.length > 0 ? (
-        <div className="picker-grid">
-          {filtered.map((subclass) => (
-            <div
-              key={subclass.id}
-              className={`picker-card ${selectedSubclassId === subclass.id ? "selected" : ""}`}
-              onClick={() =>
-                onSelect(
-                  selectedSubclassId === subclass.id ? null : subclass.id,
-                )
-              }
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelect(
-                    selectedSubclassId === subclass.id ? null : subclass.id,
-                  );
-                }
-              }}
+        <div className="split-picker__search-bar">
+          <Search size={13} className="split-picker__search-glass" />
+          <input
+            type="search"
+            id="subclass-search"
+            placeholder="Search subclasses…"
+            autoComplete="off"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="split-picker__search-input"
+          />
+          {search && (
+            <button
+              className="split-picker__search-clear"
+              onClick={() => setSearch("")}
+              aria-label="Clear search"
             >
-              <span className="picker-card-name">{subclass.name}</span>
-              <span className="picker-card-source">{subclass.source}</span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="picker-empty">No subclasses match your search.</p>
-      )}
-
-      {selectedSubclass && (
-        <article className="detail-card">
-          <h3>
-            {selectedSubclass.name}{" "}
-            <span>({selectedSubclass.source})</span>
-          </h3>
-          <p>
-            <strong>Class:</strong> {selectedSubclass.className} (
-            {selectedSubclass.classSource})
-          </p>
-          {selectedSubclass.features.length > 0 && (
-            <ul className="compact-list">
-              {selectedSubclass.features.slice(0, 6).map((feature) => (
-                <li key={feature}>{feature}</li>
-              ))}
-            </ul>
+              ×
+            </button>
           )}
-        </article>
-      )}
+        </div>
+
+        <div className="split-picker__sort-bar">
+          <button
+            className={`split-picker__sort-btn${sortKey === "name" ? " active" : ""}`}
+            onClick={() => toggleSort("name")}
+          >
+            Name{sortIndicator("name")}
+          </button>
+          <button
+            className={`split-picker__sort-btn split-picker__sort-btn--grow${sortKey === "source" ? " active" : ""}`}
+            onClick={() => toggleSort("source")}
+          >
+            Source{sortIndicator("source")}
+          </button>
+        </div>
+
+        <ul
+          className="split-picker__list"
+          role="listbox"
+          aria-label="Subclasses"
+        >
+          {filtered.length === 0 ? (
+            <li className="split-picker__list-empty">
+              No subclasses match "{search}"
+            </li>
+          ) : (
+            filtered.map((sc) => (
+              <li
+                key={sc.id}
+                role="option"
+                aria-selected={selectedSubclassId === sc.id}
+                className={`split-picker__list-item${selectedSubclassId === sc.id ? " selected" : ""}`}
+                onClick={() =>
+                  onSelect(selectedSubclassId === sc.id ? null : sc.id)
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelect(selectedSubclassId === sc.id ? null : sc.id);
+                  }
+                }}
+                tabIndex={0}
+              >
+                <span className="split-picker__item-name">{sc.name}</span>
+                <span className="split-picker__item-source">{sc.source}</span>
+              </li>
+            ))
+          )}
+        </ul>
+
+        <div className="split-picker__list-count">
+          {filtered.length} of {subclasses.length} subclass
+          {subclasses.length !== 1 ? "es" : ""}
+        </div>
+      </div>
+
+      {/* ── Right: detail panel ───────────────────────────── */}
+      <div className="split-picker__detail-col">
+        {selectedSubclass ? (
+          <div className="split-picker__detail-block" key={selectedSubclass.id}>
+            <div className="split-picker__detail-header">
+              <h2 className="split-picker__detail-name">
+                {selectedSubclass.name}
+              </h2>
+              <span className="split-picker__detail-source">
+                {selectedSubclass.source}
+              </span>
+            </div>
+            <div className="split-picker__detail-body">
+              {selectedSubclass.className && (
+                <p className="split-picker__detail-meta">
+                  <strong>Class:</strong> {selectedSubclass.className}
+                  {selectedSubclass.classSource
+                    ? ` (${selectedSubclass.classSource})`
+                    : ""}
+                </p>
+              )}
+              {selectedSubclass.features.length > 0 && (
+                <>
+                  <p className="split-picker__detail-meta">
+                    <strong>Features:</strong>
+                  </p>
+                  <ul className="split-picker__detail-list">
+                    {selectedSubclass.features.slice(0, 8).map((f) => (
+                      <li key={f}>{f}</li>
+                    ))}
+                    {selectedSubclass.features.length > 8 && (
+                      <li className="split-picker__detail-more">
+                        +{selectedSubclass.features.length - 8} more…
+                      </li>
+                    )}
+                  </ul>
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="split-picker__detail-initial">
+            <Scroll size={32} className="split-picker__detail-initial-icon" />
+            <p>Select a subclass from the list to view details.</p>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

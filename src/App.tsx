@@ -1,3 +1,4 @@
+import { Dna, Scroll, Shield, Sparkles, Sword } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import "./App.css";
@@ -12,17 +13,15 @@ import { RacePicker } from "./components/RacePicker";
 import { SelectionsSidebar } from "./components/SelectionsSidebar";
 import { SpellPicker } from "./components/SpellPicker";
 import { StepWizard, type WizardStep } from "./components/StepWizard";
-import { SubclassPicker } from "./components/SubclassPicker";
 import type {
     BuilderBackground,
     BuilderClass,
     BuilderRace,
     BuilderSpell,
     BuilderSubclass,
-    BuilderSubrace,
 } from "./types";
 import type { UpstreamSubclass } from "./types/classes";
-import type { UpstreamRace, UpstreamSubrace } from "./types/races";
+import type { UpstreamRace } from "./types/races";
 
 function makeId(name: string, source: string): string {
   return `${name}|${source}`.toLowerCase();
@@ -173,32 +172,11 @@ function toBuilderSubclass(value: unknown): BuilderSubclass | null {
   };
 }
 
-function toBuilderSubrace(value: unknown): BuilderSubrace | null {
-  const record = typeof value === "object" && value !== null ? value : null;
-  if (!record) return null;
-
-  const raw = record as UpstreamSubrace;
-  if (typeof raw.name !== "string" || typeof raw.source !== "string") {
-    return null;
-  }
-
-  return {
-    id: makeId(raw.name, raw.source),
-    name: raw.name,
-    source: raw.source,
-    raceName: typeof raw.raceName === "string" ? raw.raceName : undefined,
-    raceSource: typeof raw.raceSource === "string" ? raw.raceSource : undefined,
-    entriesSummary: getEntriesSummary(raw.entries),
-    raw: record as Record<string, unknown>,
-  };
-}
-
 function App() {
   const [currentStep, setCurrentStep] = useState(1);
 
   // ── Data from API ──────────────────────────────────────────
   const [races, setRaces] = useState<BuilderRace[]>([]);
-  const [subraces, setSubraces] = useState<BuilderSubrace[]>([]);
   const [classes, setClasses] = useState<BuilderClass[]>([]);
   const [subclasses, setSubclasses] = useState<BuilderSubclass[]>([]);
   const [backgrounds, setBackgrounds] = useState<BuilderBackground[]>([]);
@@ -206,9 +184,6 @@ function App() {
 
   // ── User selections ────────────────────────────────────────
   const [selectedRaceId, setSelectedRaceId] = useState<string | null>(null);
-  const [selectedSubraceId, setSelectedSubraceId] = useState<string | null>(
-    null,
-  );
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [selectedSubclassId, setSelectedSubclassId] = useState<string | null>(
     null,
@@ -245,12 +220,6 @@ function App() {
           (racesPayload as { race?: unknown }).race,
         )
           ? ((racesPayload as { race: unknown[] }).race as unknown[])
-          : [];
-
-        const subraceValues = Array.isArray(
-          (racesPayload as { subrace?: unknown }).subrace,
-        )
-          ? ((racesPayload as { subrace: unknown[] }).subrace as unknown[])
           : [];
 
         // Classes
@@ -311,11 +280,6 @@ function App() {
           : [];
 
         setRaces(mergeRacesByName(raceValues.map((v) => toBuilderRace(v))));
-        setSubraces(
-          subraceValues
-            .map((v) => toBuilderSubrace(v))
-            .filter((v): v is BuilderSubrace => v !== null),
-        );
         setClasses(classValues.map((v) => toEntity(v, "Unknown Class")));
         setSubclasses(
           subclassValues
@@ -346,11 +310,6 @@ function App() {
     [races, selectedRaceId],
   );
 
-  const selectedSubrace = useMemo(
-    () => subraces.find((sr) => sr.id === selectedSubraceId) ?? null,
-    [subraces, selectedSubraceId],
-  );
-
   const selectedClass = useMemo(
     () => classes.find((c) => c.id === selectedClassId) ?? null,
     [classes, selectedClassId],
@@ -371,22 +330,6 @@ function App() {
     [spells, selectedSpellIds],
   );
 
-  const filteredSubraces = useMemo(() => {
-    if (!selectedRace) return [];
-
-    const allowedSources = new Set(
-      selectedRace.sources?.length
-        ? selectedRace.sources
-        : [selectedRace.source],
-    );
-
-    return subraces.filter((sr) => {
-      if (sr.raceName !== selectedRace.name) return false;
-      if (!sr.raceSource) return true;
-      return allowedSources.has(sr.raceSource);
-    });
-  }, [selectedRace, subraces]);
-
   const filteredSubclasses = useMemo(() => {
     if (!selectedClass) return [];
     return subclasses.filter(
@@ -399,7 +342,6 @@ function App() {
   // ── Handlers ───────────────────────────────────────────────
   const handleRaceSelect = (raceId: string | null) => {
     setSelectedRaceId(raceId);
-    setSelectedSubraceId(null);
   };
 
   const handleClassSelect = (classId: string | null) => {
@@ -422,7 +364,6 @@ function App() {
   const handleStartOver = () => {
     setCurrentStep(1);
     setSelectedRaceId(null);
-    setSelectedSubraceId(null);
     setSelectedClassId(null);
     setSelectedSubclassId(null);
     setSelectedBackgroundId(null);
@@ -431,12 +372,10 @@ function App() {
 
   // ── Steps definition ──────────────────────────────────────
   // Step completion: require selection except for optional steps
-  const ancestryComplete =
-    selectedRaceId !== null &&
-    (filteredSubraces.length === 0 || selectedSubraceId !== null);
-  const classComplete = selectedClassId !== null;
-  const subclassComplete =
-    filteredSubclasses.length === 0 || selectedSubclassId !== null;
+  const ancestryComplete = selectedRaceId !== null;
+  const classComplete =
+    selectedClassId !== null &&
+    (filteredSubclasses.length === 0 || selectedSubclassId !== null);
   const backgroundComplete = selectedBackgroundId !== null;
   const spellsComplete = true; // Spells are optional
   const summaryComplete = true;
@@ -452,46 +391,81 @@ function App() {
           <RacePicker
             races={races}
             selectedRaceId={selectedRaceId}
-            subraces={filteredSubraces}
-            selectedSubraceId={selectedSubraceId}
             onSelect={handleRaceSelect}
-            onSelectSubrace={setSelectedSubraceId}
           />
         ),
       },
       {
         id: 2,
-        title: "Class",
+        title: "Class & Subclass",
         isComplete: classComplete,
         isLocked: !ancestryComplete,
         content: (
-          <ClassPicker
-            classes={classes}
-            selectedClassId={selectedClassId}
-            onSelect={handleClassSelect}
-          />
+          <>
+            <ClassPicker
+              classes={classes}
+              selectedClassId={selectedClassId}
+              onSelect={handleClassSelect}
+            />
+
+            {selectedClassId ? (
+              <section style={{ marginTop: "1.2rem" }}>
+                <div className="picker-header">
+                  <h2>Choose Your Subclass</h2>
+                  <p>Pick a subclass for your selected class.</p>
+                </div>
+
+                <div className="picker-grid">
+                  {filteredSubclasses.length > 0 ? (
+                    filteredSubclasses.map((subclass) => (
+                      <div
+                        key={subclass.id}
+                        className={`picker-card ${selectedSubclassId === subclass.id ? "selected" : ""}`}
+                        onClick={() =>
+                          setSelectedSubclassId(
+                            selectedSubclassId === subclass.id
+                              ? null
+                              : subclass.id,
+                          )
+                        }
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setSelectedSubclassId(
+                              selectedSubclassId === subclass.id
+                                ? null
+                                : subclass.id,
+                            );
+                          }
+                        }}
+                      >
+                        <span className="picker-card-name">
+                          {subclass.name}
+                        </span>
+                        <span className="picker-card-source">
+                          {subclass.source}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="picker-empty">
+                      This class has no explicit subclass options. You can
+                      continue.
+                    </p>
+                  )}
+                </div>
+              </section>
+            ) : null}
+          </>
         ),
       },
       {
         id: 3,
-        title: "Subclass",
-        isComplete: subclassComplete,
-        isLocked: !classComplete,
-        content: (
-          <SubclassPicker
-            subclasses={filteredSubclasses}
-            selectedSubclassId={selectedSubclassId}
-            hasSelectedClass={classComplete}
-            className={selectedClass?.name ?? null}
-            onSelect={setSelectedSubclassId}
-          />
-        ),
-      },
-      {
-        id: 4,
         title: "Background",
         isComplete: backgroundComplete,
-        isLocked: !classComplete || !subclassComplete,
+        isLocked: !classComplete,
         content: (
           <BackgroundPicker
             backgrounds={backgrounds}
@@ -501,7 +475,7 @@ function App() {
         ),
       },
       {
-        id: 5,
+        id: 4,
         title: "Spells",
         isComplete: spellsComplete,
         isLocked: !backgroundComplete,
@@ -515,14 +489,13 @@ function App() {
         ),
       },
       {
-        id: 6,
+        id: 5,
         title: "Summary",
         isComplete: summaryComplete,
         isLocked: !backgroundComplete,
         content: (
           <FinalSummary
             race={selectedRace}
-            subrace={selectedSubrace}
             builderClass={selectedClass}
             subclass={selectedSubclass}
             background={selectedBackground}
@@ -537,23 +510,19 @@ function App() {
       classes,
       backgrounds,
       spells,
-      filteredSubraces,
       filteredSubclasses,
       selectedRaceId,
-      selectedSubraceId,
       selectedClassId,
       selectedSubclassId,
       selectedBackgroundId,
       selectedSpellIds,
       selectedRace,
-      selectedSubrace,
       selectedClass,
       selectedSubclass,
       selectedBackground,
       selectedSpellsList,
       ancestryComplete,
       classComplete,
-      subclassComplete,
       backgroundComplete,
       spellsComplete,
       summaryComplete,
@@ -584,17 +553,28 @@ function App() {
   // ── Sidebar data ───────────────────────────────────────────
   const sidebarItems = useMemo(
     () => [
-      { icon: "🧬", label: "Race", value: selectedRace?.name ?? null },
-      { icon: "🌿", label: "Subrace", value: selectedSubrace?.name ?? null },
-      { icon: "⚔", label: "Class", value: selectedClass?.name ?? null },
-      { icon: "🛡", label: "Subclass", value: selectedSubclass?.name ?? null },
       {
-        icon: "📜",
+        icon: <Dna size={14} />,
+        label: "Race",
+        value: selectedRace?.name ?? null,
+      },
+      {
+        icon: <Sword size={14} />,
+        label: "Class",
+        value: selectedClass?.name ?? null,
+      },
+      {
+        icon: <Shield size={14} />,
+        label: "Subclass",
+        value: selectedSubclass?.name ?? null,
+      },
+      {
+        icon: <Scroll size={14} />,
         label: "Background",
         value: selectedBackground?.name ?? null,
       },
       {
-        icon: "🔮",
+        icon: <Sparkles size={14} />,
         label: "Spells",
         value:
           selectedSpellIds.length > 0
@@ -604,7 +584,6 @@ function App() {
     ],
     [
       selectedRace,
-      selectedSubrace,
       selectedClass,
       selectedSubclass,
       selectedBackground,
