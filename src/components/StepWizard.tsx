@@ -3,7 +3,6 @@ import {
     ChevronLeft,
     ChevronRight,
     Moon,
-    Shield,
     Sun,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -20,7 +19,6 @@ export interface WizardStep {
 interface StepWizardProps {
   steps: WizardStep[];
   currentStep: number;
-  sidebar: ReactNode;
   onStepChange: (step: number) => void;
   onNext: () => void;
   onPrevious: () => void;
@@ -29,7 +27,6 @@ interface StepWizardProps {
 export function StepWizard({
   steps,
   currentStep,
-  sidebar,
   onStepChange,
   onNext,
   onPrevious,
@@ -56,8 +53,6 @@ export function StepWizard({
       <header className="wizard-header">
         <div className="wizard-header__inner">
           <span className="wizard-header__title">
-            <Shield size={20} className="wizard-header__crest" />
-            <span className="wizard-header__eyebrow">5etools</span>
             Character Builder
           </span>
           <button
@@ -125,8 +120,6 @@ export function StepWizard({
 
       {/* ── Body ───────────────────────────────────────────── */}
       <div className="wizard-body">
-        {sidebar}
-
         <div className="wizard-main">
           <div className="wizard-step-panel" key={currentStep}>
             {activeStep?.content}

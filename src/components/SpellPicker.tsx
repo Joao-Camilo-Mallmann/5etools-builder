@@ -1,4 +1,4 @@
-import { Sparkles, X } from "lucide-react";
+import { Search, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { BuilderSpell } from "../types";
@@ -39,136 +39,113 @@ export function SpellPicker({
     return result;
   }, [spells, search, sourceFilter]);
 
-  const selectedSpells = useMemo(
-    () => spells.filter((s) => selectedSpellIds.includes(s.id)),
-    [spells, selectedSpellIds],
-  );
-
   return (
-    <section>
+    <section className="card-grid-picker">
       <div className="picker-header">
         <h2>
           <Sparkles
-            size={16}
-            style={{ verticalAlign: "middle", marginRight: 6 }}
+            size={20}
+            style={{ verticalAlign: "text-bottom", marginRight: 8 }}
           />
           Choose Your Spells
         </h2>
         <p>Select the spells your character knows or has prepared.</p>
-      </div>
-
-      <div className="spell-picker-layout">
-        {/* ── Left: Available Spells ────────────────────────── */}
-        <div className="spell-picker-main">
-          <div className="spell-filters">
-            <label>
-              Search
-              <input
-                type="text"
-                placeholder="Search spells..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                id="spell-search"
-              />
-            </label>
-
-            <label>
-              Source
-              <select
-                value={sourceFilter}
-                onChange={(e) => setSourceFilter(e.target.value)}
-                id="spell-source-filter"
-              >
-                <option value="">All Sources</option>
-                {sources.map((source) => (
-                  <option key={source} value={source}>
-                    {source}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <p className="picker-count">
-            {filtered.length} spell{filtered.length !== 1 ? "s" : ""} shown
-            {(search || sourceFilter) && ` (from ${spells.length} total)`}
+        <div style={{ display: "flex", gap: "12px", alignItems: "center", marginTop: 4 }}>
+          <p className="text-muted" style={{ fontSize: "0.85rem", margin: 0 }}>
+            {selectedSpellIds.length} spell{selectedSpellIds.length !== 1 ? "s" : ""} selected.
           </p>
-
-          <ul className="spell-list">
-            {filtered.slice(0, 100).map((spell) => {
-              const isSelected = selectedSpellIds.includes(spell.id);
-              return (
-                <li key={spell.id}>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => onToggleSpell(spell.id)}
-                    />
-                    <div className="spell-info">
-                      <span className="spell-title">
-                        {spell.name}
-                        <small>({spell.source})</small>
-                      </span>
-                      {spell.level !== undefined && (
-                        <span className="spell-meta">Level {spell.level}</span>
-                      )}
-                    </div>
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-
-          {filtered.length > 100 && (
-            <p className="picker-count" style={{ marginTop: "0.5rem" }}>
-              Showing first 100 results. Refine your search to see more.
-            </p>
-          )}
-        </div>
-
-        {/* ── Right: Selected Spells ───────────────────────── */}
-        <div className="spell-selected-panel">
-          <div className="spell-selected-title">
-            <span>Selected Spells</span>
-            <span className="spell-selected-count">
-              {selectedSpells.length}
-            </span>
-          </div>
-
-          {selectedSpells.length > 0 ? (
-            <>
-              <ul className="spell-selected-list">
-                {selectedSpells.map((spell) => (
-                  <li key={spell.id} className="spell-selected-item">
-                    <span>{spell.name}</span>
-                    <button
-                      type="button"
-                      className="spell-remove-btn"
-                      onClick={() => onToggleSpell(spell.id)}
-                      title={`Remove ${spell.name}`}
-                    >
-                      <X size={12} />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <button
-                type="button"
-                className="button ghost"
-                onClick={onClearSpells}
-                style={{ marginTop: "0.5rem", alignSelf: "center" }}
-              >
-                Clear All
-              </button>
-            </>
-          ) : (
-            <p className="spell-selected-empty">
-              No spells selected yet. Check spells from the list.
-            </p>
+          {selectedSpellIds.length > 0 && (
+            <button
+              type="button"
+              className="button ghost"
+              style={{ padding: "2px 6px", minHeight: "unset", fontSize: "0.75rem" }}
+              onClick={onClearSpells}
+            >
+              Clear Selected
+            </button>
           )}
         </div>
       </div>
+
+      <div className="card-grid-picker__search">
+        <Search size={18} className="text-muted" />
+        <input
+          type="text"
+          placeholder="Search spells..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select
+          value={sourceFilter}
+          onChange={(e) => setSourceFilter(e.target.value)}
+          style={{ padding: "6px 12px", borderRadius: "4px", border: "1px solid var(--line)", background: "var(--bg-input)", color: "var(--text)" }}
+        >
+          <option value="">All Sources</option>
+          {sources.map((source) => (
+            <option key={source} value={source}>
+              {source}
+            </option>
+          ))}
+        </select>
+        {(search || sourceFilter) && (
+          <button
+            type="button"
+            className="button ghost"
+            style={{ padding: "4px 8px", minHeight: "unset", fontSize: "0.8rem" }}
+            onClick={() => {
+              setSearch("");
+              setSourceFilter("");
+            }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      {filtered.length > 0 ? (
+        <ul className="card-grid-picker__grid">
+          {filtered.slice(0, 100).map((spell) => {
+            const isSelected = selectedSpellIds.includes(spell.id);
+            return (
+              <li
+                key={spell.id}
+                className={`card-grid-picker__card ${isSelected ? "selected" : ""}`}
+                onClick={() => onToggleSpell(spell.id)}
+              >
+                <div className="card-grid-picker__card-header">
+                  <h3 className="card-grid-picker__card-name">{spell.name}</h3>
+                  <span className="card-grid-picker__card-source">
+                    {spell.source}
+                  </span>
+                </div>
+                <div className="card-grid-picker__card-desc">
+                  Level: {spell.level !== undefined ? spell.level : "Cantrip"}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <div className="card-grid-picker__empty">
+          <p>No spells found matching your criteria.</p>
+          <button
+            type="button"
+            className="button ghost"
+            onClick={() => {
+              setSearch("");
+              setSourceFilter("");
+            }}
+          >
+            Clear Filters
+          </button>
+        </div>
+      )}
+      
+      {filtered.length > 100 && (
+        <p className="text-muted" style={{ textAlign: "center", fontSize: "0.8rem", marginTop: 8 }}>
+          Showing first 100 results. Refine your search to see more.
+        </p>
+      )}
     </section>
   );
 }

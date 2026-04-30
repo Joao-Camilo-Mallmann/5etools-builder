@@ -1,4 +1,4 @@
-import { Dna, Scroll, Shield, Sparkles, Sword } from "lucide-react";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import "./App.css";
@@ -10,7 +10,6 @@ import { BackgroundPicker } from "./components/BackgroundPicker";
 import { ClassPicker } from "./components/ClassPicker";
 import { FinalSummary } from "./components/FinalSummary";
 import { RacePicker } from "./components/RacePicker";
-import { SelectionsSidebar } from "./components/SelectionsSidebar";
 import { SpellPicker } from "./components/SpellPicker";
 import { StepWizard, type WizardStep } from "./components/StepWizard";
 import type {
@@ -550,46 +549,7 @@ function App() {
     }
   };
 
-  // ── Sidebar data ───────────────────────────────────────────
-  const sidebarItems = useMemo(
-    () => [
-      {
-        icon: <Dna size={14} />,
-        label: "Race",
-        value: selectedRace?.name ?? null,
-      },
-      {
-        icon: <Sword size={14} />,
-        label: "Class",
-        value: selectedClass?.name ?? null,
-      },
-      {
-        icon: <Shield size={14} />,
-        label: "Subclass",
-        value: selectedSubclass?.name ?? null,
-      },
-      {
-        icon: <Scroll size={14} />,
-        label: "Background",
-        value: selectedBackground?.name ?? null,
-      },
-      {
-        icon: <Sparkles size={14} />,
-        label: "Spells",
-        value:
-          selectedSpellIds.length > 0
-            ? `${selectedSpellIds.length} selected`
-            : null,
-      },
-    ],
-    [
-      selectedRace,
-      selectedClass,
-      selectedSubclass,
-      selectedBackground,
-      selectedSpellIds,
-    ],
-  );
+
 
   return (
     <main className="app-shell">
@@ -606,7 +566,6 @@ function App() {
         <StepWizard
           steps={steps}
           currentStep={currentStep}
-          sidebar={<SelectionsSidebar items={sidebarItems} />}
           onStepChange={handleStepChange}
           onNext={handleNext}
           onPrevious={handlePrevious}
